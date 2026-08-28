@@ -10,7 +10,16 @@ interface Props {
 
 export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) => {
   const [tab, setTab] = useState<'login' | 'signup'>('login');
-  const [handle, setHandle] = useState('');
+  
+  // Login fields
+  const [loginHandle, setLoginHandle] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+
+  // Signup fields
+  const [signupHandle, setSignupHandle] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -36,13 +45,13 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
   // --- LOGIN FLOW ---
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!handle.trim()) return;
+    if (!loginHandle.trim() || !loginPassword) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const res = await loginUser(handle.trim());
+      const res = await loginUser(loginHandle.trim(), loginPassword);
       localStorage.setItem('userId', res.user.id.toString());
       localStorage.setItem('handle', res.user.handle);
       onLogin(res.user.id);
@@ -56,13 +65,13 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
   // --- SIGNUP FLOW: STEP 1 (Request Challenge) ---
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!handle.trim()) return;
+    if (!signupHandle.trim()) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const res = await requestVerification(handle.trim());
+      const res = await requestVerification(signupHandle.trim());
       setCodeSnippet(res.codeSnippet);
       if (res.problemUrl) setProblemUrl(res.problemUrl);
       setSignupStep('challenge');
@@ -73,10 +82,10 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
     }
   };
 
-  // --- SIGNUP FLOW: STEP 2 (Verify Submission) ---
+  // --- SIGNUP FLOW: STEP 2 (Verify Submission & Create Password) ---
   const triggerVerifyCheck = async () => {
     try {
-      const res = await verifyCodeforces(handle.trim());
+      const res = await verifyCodeforces(signupHandle.trim(), signupPassword);
       cleanup();
       localStorage.setItem('userId', res.user.id.toString());
       localStorage.setItem('handle', res.user.handle);
@@ -87,7 +96,21 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
     }
   };
 
-  const handleVerifyStart = async () => {
+  const handleVerifyStart = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!signupPassword) {
+      setError('Please choose a password (at least 6 characters)');
+      return;
+    }
+    if (signupPassword.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+    if (signupPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSignupStep('checking');
@@ -111,7 +134,7 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
         setSignupStep('challenge');
         setLoading(false);
         setError(
-          `Could not detect compilation error submission on ${problemUrl.split('/').slice(-2).join('')} yet. Make sure you submitted to Codeforces and click 'Verify Submission' again.`
+          `Could not detect compilation error submission on ${problemUrl.split('/').slice(-2).join('')} yet. Make sure you submitted to Codeforces and click 'Verify & Create Account' again.`
         );
       }
     }, 2500);
@@ -199,11 +222,25 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
                 </label>
                 <input
                   type="text"
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value)}
+                  value={loginHandle}
+                  onChange={(e) => setLoginHandle(e.target.value)}
                   className="w-full bg-[var(--color-input)] border border-[var(--color-border)] p-3 rounded-lg font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
                   placeholder="e.g. tourist"
                   autoFocus
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--color-text-dim)] uppercase mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full bg-[var(--color-input)] border border-[var(--color-border)] p-3 rounded-lg font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                  placeholder="••••••••"
                   required
                 />
               </div>
@@ -216,6 +253,7 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
                       type="button"
                       onClick={() => {
                         setTab('signup');
+                        setSignupHandle(loginHandle);
                         setError(null);
                       }}
                       className="mt-2 text-xs font-mono text-[var(--color-accent)] underline hover:text-[var(--color-accent-strong)]"
@@ -247,8 +285,8 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
                     </label>
                     <input
                       type="text"
-                      value={handle}
-                      onChange={(e) => setHandle(e.target.value)}
+                      value={signupHandle}
+                      onChange={(e) => setSignupHandle(e.target.value)}
                       className="w-full bg-[var(--color-input)] border border-[var(--color-border)] p-3 rounded-lg font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
                       placeholder="e.g. tourist"
                       autoFocus
@@ -276,18 +314,18 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
               )}
 
               {signupStep === 'challenge' && (
-                <div className="space-y-4">
-                  <div className="text-center mb-3">
+                <form onSubmit={handleVerifyStart} className="space-y-4">
+                  <div className="text-center mb-2">
                     <p className="text-xs font-mono text-[var(--color-text-dim)] uppercase">
                       Verifying Handle
                     </p>
                     <p className="text-lg font-mono font-bold text-[var(--color-text)]">
-                      {handle}
+                      {signupHandle}
                     </p>
                   </div>
 
-                  <div className="bg-[var(--color-input)] border border-[var(--color-border)] rounded-lg p-3.5">
-                    <div className="flex items-center justify-between mb-2">
+                  <div className="bg-[var(--color-input)] border border-[var(--color-border)] rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs font-mono text-[var(--color-text-dim)]">Verification Snippet</span>
                       <button
                         type="button"
@@ -297,17 +335,42 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
                         {copied ? '✓ Copied!' : 'Copy Snippet'}
                       </button>
                     </div>
-                    <pre className="text-xs font-mono text-[var(--color-text)] whitespace-pre-wrap overflow-x-auto max-h-36 bg-[color-mix(in_srgb,var(--color-bg)_50%,transparent)] p-2 rounded">
+                    <pre className="text-xs font-mono text-[var(--color-text)] whitespace-pre-wrap overflow-x-auto max-h-28 bg-[color-mix(in_srgb,var(--color-bg)_50%,transparent)] p-2 rounded">
                       {codeSnippet}
                     </pre>
                   </div>
 
-                  <div className="text-xs font-mono text-[var(--color-text-dim)] space-y-1.5 bg-[color-mix(in_srgb,var(--color-accent)_8%,transparent)] p-3 rounded-lg border border-[color-mix(in_srgb,var(--color-accent)_20%,transparent)]">
-                    <p className="font-bold text-[var(--color-text)]">Instructions:</p>
-                    <p>1. Open <a href={problemUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--color-accent)] underline font-bold">Codeforces Problem {problemId} ↗</a></p>
-                    <p>2. Paste snippet in Codeforces submit box (any language, e.g. GNU G++)</p>
-                    <p>3. Submit — Codeforces will give <strong>Compilation Error</strong></p>
-                    <p>4. Click button below to complete verification</p>
+                  <div className="text-xs font-mono text-[var(--color-text-dim)] space-y-1 bg-[color-mix(in_srgb,var(--color-accent)_8%,transparent)] p-2.5 rounded-lg border border-[color-mix(in_srgb,var(--color-accent)_20%,transparent)]">
+                    <p className="font-bold text-[var(--color-text)]">Step 1: Submit to Codeforces</p>
+                    <p>Open <a href={problemUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--color-accent)] underline font-bold">Problem {problemId} ↗</a> and submit the snippet with a compilation error.</p>
+                  </div>
+
+                  <div className="space-y-3 pt-1">
+                    <p className="text-xs font-mono font-bold text-[var(--color-text)] uppercase">
+                      Step 2: Choose Your Password
+                    </p>
+                    <div>
+                      <input
+                        type="password"
+                        value={signupPassword}
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                        className="w-full bg-[var(--color-input)] border border-[var(--color-border)] p-2.5 rounded-lg font-mono text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]"
+                        placeholder="Choose password (min 6 characters)"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full bg-[var(--color-input)] border border-[var(--color-border)] p-2.5 rounded-lg font-mono text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]"
+                        placeholder="Confirm password"
+                        required
+                        minLength={6}
+                      />
+                    </div>
                   </div>
 
                   {error && (
@@ -329,14 +392,13 @@ export const HandleEntry: React.FC<Props> = ({ onLogin, theme, onToggleTheme }) 
                       Back
                     </button>
                     <button
-                      type="button"
-                      onClick={handleVerifyStart}
+                      type="submit"
                       className="flex-1 bg-[var(--color-accent)] text-white font-bold font-mono uppercase tracking-wider py-3 rounded-lg hover:bg-[var(--color-accent-strong)] transition-colors"
                     >
-                      I've Submitted — Verify
+                      Verify & Create Account
                     </button>
                   </div>
-                </div>
+                </form>
               )}
 
               {signupStep === 'checking' && (

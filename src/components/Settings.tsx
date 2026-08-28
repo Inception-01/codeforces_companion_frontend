@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { updateUser, User } from '../api';
+import { updateUser, changePassword, User } from '../api';
 import { ExportButton } from './ExportButton';
 import { PageHeader, Section, Card, Button, Chip } from './ui';
 
@@ -26,6 +26,36 @@ export const Settings: React.FC<Props> = ({ userId, user, onUserChange, onLogout
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [tagInput, setTagInput] = useState('');
+
+  // Password change state
+  const [oldPass, setOldPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [changingPass, setChangingPass] = useState(false);
+  const [passError, setPassError] = useState<string | null>(null);
+  const [passSuccess, setPassSuccess] = useState<string | null>(null);
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPass || newPass.length < 6) {
+      setPassError('New password must be at least 6 characters');
+      return;
+    }
+    setChangingPass(true);
+    setPassError(null);
+    setPassSuccess(null);
+
+    try {
+      const res = await changePassword(oldPass, newPass);
+      setPassSuccess(res.message || 'Password updated successfully!');
+      setOldPass('');
+      setNewPass('');
+      setTimeout(() => setPassSuccess(null), 4000);
+    } catch (err: any) {
+      setPassError(err.message || 'Failed to update password');
+    } finally {
+      setChangingPass(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -228,7 +258,48 @@ export const Settings: React.FC<Props> = ({ userId, user, onUserChange, onLogout
         </Card>
       </Section>
 
-      <Section num="02" title="Data Export">
+      <Section num="02" title="Security & Password">
+        <Card className="p-5 md:p-6">
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <p className="text-sm text-[var(--color-text-dim)] font-mono">
+              Update your login password for this Codeforces account.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-mono text-[var(--color-text-dim)] uppercase mb-2">Current Password</label>
+                <input
+                  type="password"
+                  value={oldPass}
+                  onChange={(e) => setOldPass(e.target.value)}
+                  className="w-full bg-[var(--color-input)] border border-[var(--color-border)] p-3 rounded-lg font-mono text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-[var(--color-text-dim)] uppercase mb-2">New Password (min 6 chars)</label>
+                <input
+                  type="password"
+                  value={newPass}
+                  onChange={(e) => setNewPass(e.target.value)}
+                  className="w-full bg-[var(--color-input)] border border-[var(--color-border)] p-3 rounded-lg font-mono text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]"
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+            </div>
+
+            {passError && <div className="text-[var(--color-red)] font-mono text-sm">{passError}</div>}
+            {passSuccess && <div className="text-[var(--color-green)] font-mono text-sm">{passSuccess}</div>}
+
+            <Button type="submit" variant="primary" disabled={changingPass} className="py-2.5 px-6">
+              {changingPass ? 'Updating...' : 'Update Password'}
+            </Button>
+          </form>
+        </Card>
+      </Section>
+
+      <Section num="03" title="Data Export">
         <Card className="p-5 md:p-6">
           <p className="text-sm text-[var(--color-text-dim)] font-mono mb-4">
             Download your daily solve history and generated targets.

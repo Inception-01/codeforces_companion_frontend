@@ -2,12 +2,7 @@
 // - Local dev: left as '/api' (the Vite dev proxy forwards /api -> the backend).
 // - Vercel/Render split deploy: set VITE_API_BASE to the hosted backend URL,
 //   e.g. VITE_API_BASE=https://cf-companion-api.onrender.com
-const API_ORIGIN = (
-  import.meta.env.VITE_API_BASE ||
-  (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
-    ? 'https://codeforces-companion-backend.onrender.com'
-    : '')
-).replace(/\/+$/, '');
+const API_ORIGIN = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 const BASE = API_ORIGIN ? `${API_ORIGIN}/api` : '/api';
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
@@ -146,14 +141,14 @@ export interface VerificationStatusResponse {
 export const requestVerification = (handle: string) => 
   apiFetch<VerificationRequestResponse>('/auth/request-verification', { method: 'POST', body: JSON.stringify({ handle }) });
 
-export const verifyCodeforces = (handle: string) => 
-  apiFetch<VerificationResponse>('/auth/verify', { method: 'POST', body: JSON.stringify({ handle }) });
+export const verifyCodeforces = (handle: string, password: string) => 
+  apiFetch<VerificationResponse>('/auth/verify', { method: 'POST', body: JSON.stringify({ handle, password }) });
 
-export const getVerificationStatus = (handle: string) => 
-  apiFetch<VerificationStatusResponse>(`/auth/verification-status/${handle}`);
+export const loginUser = (handle: string, password: string) =>
+  apiFetch<VerificationResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ handle, password }) });
 
-export const loginUser = (handle: string) =>
-  apiFetch<VerificationResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ handle }) });
+export const changePassword = (oldPassword: string, newPassword: string) =>
+  apiFetch<{ ok: boolean; message: string }>('/auth/change-password', { method: 'POST', body: JSON.stringify({ oldPassword, newPassword }) });
 
 export const createUser = (handle: string) => apiFetch<User>('/user', { method: 'POST', body: JSON.stringify({ handle }) });
 export const getUser = (id: number) => apiFetch<User>(`/user/${id}`);
