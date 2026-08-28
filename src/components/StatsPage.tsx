@@ -2,7 +2,7 @@ import React from 'react';
 import { useStats } from '../hooks/useStats';
 import { Heatmap } from './Heatmap';
 import { StreakBar } from './StreakBar';
-import { PageHeader, Section, Card, StatCard, Spinner, Empty } from './ui';
+import { PageHeader, Section, Card, StatCard, Spinner, Empty, Button } from './ui';
 
 function bandColor(band: string): string {
   let color = '#808080';
@@ -16,7 +16,7 @@ function bandColor(band: string): string {
 }
 
 export const StatsPage: React.FC<{ userId: number }> = ({ userId }) => {
-  const { stats, loading, error } = useStats(userId);
+  const { stats, loading, syncing, error, sync } = useStats(userId);
 
   if (loading && !stats) return (
     <div className="flex items-center gap-3 font-mono text-[var(--color-text-dim)]"><Spinner /> Loading stats...</div>
@@ -31,7 +31,18 @@ export const StatsPage: React.FC<{ userId: number }> = ({ userId }) => {
 
   return (
     <div className="space-y-2 pb-8">
-      <PageHeader title="Stats" subtitle="Your practice activity, targets and strengths at a glance." />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <PageHeader title="Stats" subtitle="Your practice activity, targets and strengths at a glance." />
+        <Button
+          variant="outline"
+          onClick={() => sync()}
+          disabled={syncing}
+          className="self-start sm:self-auto shrink-0 flex items-center gap-2 font-mono text-xs"
+        >
+          {syncing ? <Spinner className="w-3.5 h-3.5" /> : <span>↻</span>}
+          {syncing ? 'Syncing...' : 'Sync Solves'}
+        </Button>
+      </div>
 
       <Section num="01" title="Activity Heatmap">
         <Card className="p-4 md:p-5">

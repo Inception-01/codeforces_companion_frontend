@@ -46,6 +46,12 @@ export const ArenaPage: React.FC<{ userId: number }> = ({ userId }) => {
   const incomingStarted = useRef(false);
 
   useEffect(() => {
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!session || session.state !== 'running') {
       if (session) setDisplay(fmtClock(session.elapsedMs));
       return;

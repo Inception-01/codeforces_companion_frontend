@@ -67,7 +67,10 @@ export const Heatmap: React.FC<Props> = ({ heatmapData }) => {
         }
       }
 
-      const dateStr = date.toISOString().split('T')[0];
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const dt = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${y}-${m}-${dt}`;
       const count = heatmapData[dateStr] || 0;
 
       cells.push({

@@ -69,6 +69,15 @@ export const Settings: React.FC<Props> = ({ userId, user, onUserChange, onLogout
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const minRating = parseInt(formData.rating_min, 10) || 0;
+    const maxRating = parseInt(formData.rating_max, 10) || 0;
+    
+    if (maxRating > 0 && minRating > maxRating) {
+      setSaveError('Min rating cannot be greater than max rating');
+      return;
+    }
+
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
@@ -77,8 +86,8 @@ export const Settings: React.FC<Props> = ({ userId, user, onUserChange, onLogout
       const updated = await updateUser(userId, {
         handle: formData.handle,
         daily_target_count: parseInt(formData.daily_target_count, 10) || 3,
-        rating_min: parseInt(formData.rating_min, 10) || 0,
-        rating_max: parseInt(formData.rating_max, 10) || 0,
+        rating_min: minRating,
+        rating_max: maxRating,
         selected_tags: formData.selected_tags,
       });
       onUserChange(updated);

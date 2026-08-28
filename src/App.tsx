@@ -24,6 +24,7 @@ function App() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // 1. Try session /me first
       try {
         const { user: me } = await getMe();
         if (!cancelled && me) {
@@ -31,30 +32,46 @@ function App() {
           setUser(me);
           localStorage.setItem('userId', String(me.id));
           localStorage.setItem('handle', me.handle);
+          setChecking(false);
+          return;
         }
       } catch (_) {
-        // fall back to localStorage below
+        // me failed or returned null
       }
 
+      // 2. Try stored userId in localStorage
       const stored = localStorage.getItem('userId');
       if (stored) {
         const id = parseInt(stored, 10);
-        if (!cancelled) setUserId(id);
-        // Always fetch the freshest user so the UI shows the real handle
-        try {
-          const fresh = await getUser(id);
-          if (!cancelled) {
-            setUser(fresh);
-            localStorage.setItem('handle', fresh.handle);
+        if (!isNaN(id)) {
+          try {
+            const fresh = await getUser(id);
+            if (!cancelled && fresh && fresh.id) {
+              setUserId(fresh.id);
+              setUser(fresh);
+              localStorage.setItem('handle', fresh.handle);
+              setChecking(false);
+              return;
+            }
+          } catch (_) {
+            // Stale user in localStorage — clear it
+            localStorage.removeItem('userId');
+            localStorage.removeItem('handle');
           }
-        } catch (_) { /* ignore */ }
-      } else if (!cancelled && location.pathname !== '/') {
-        navigate('/');
+        }
       }
-      if (!cancelled) setChecking(false);
+
+      if (!cancelled) {
+        setUserId(null);
+        setUser(null);
+        setChecking(false);
+        if (location.pathname !== '/') {
+          navigate('/');
+        }
+      }
     })();
     return () => { cancelled = true; };
-  }, [navigate, location]);
+  }, []);
 
   const handleLogin = (id: number) => {
     setUserId(id);

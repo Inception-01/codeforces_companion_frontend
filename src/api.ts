@@ -6,10 +6,20 @@ const API_ORIGIN = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 const BASE = API_ORIGIN ? `${API_ORIGIN}/api` : '/api';
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> || {}),
+  };
+
+  const storedUid = localStorage.getItem('userId');
+  if (storedUid) {
+    headers['x-user-id'] = storedUid;
+  }
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     ...options,
+    headers,
+    credentials: 'include',
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -104,12 +114,45 @@ export interface ProfileResponse {
   ratingHistory: RatingPoint[];
 }
 
+export const getMe = () => apiFetch<{ user: User | null }>('/auth/me');
+export const logout = () => apiFetch<{ ok: boolean }>('/auth/logout', { method: 'POST' });
+
+// New verification-based auth endpoints
+export interface VerificationRequestResponse {
+  handle: string;
+  verificationCode: string;
+  codeSnippet: string;
+  problemUrl?: string;
+  problemContestId?: number;
+  problemIndex?: string;
+  instructions: string;
+}
+
+export interface VerificationResponse {
+  user: User;
+  message: string;
+}
+
+export interface VerificationStatusResponse {
+  status: 'not_started' | 'pending' | 'verified' | 'expired';
+  code?: string;
+}
+
+export const requestVerification = (handle: string) => 
+  apiFetch<VerificationRequestResponse>('/auth/request-verification', { method: 'POST', body: JSON.stringify({ handle }) });
+
+export const verifyCodeforces = (handle: string) => 
+  apiFetch<VerificationResponse>('/auth/verify', { method: 'POST', body: JSON.stringify({ handle }) });
+
+export const getVerificationStatus = (handle: string) => 
+  apiFetch<VerificationStatusResponse>(`/auth/verification-status/${handle}`);
+
+export const loginUser = (handle: string) =>
+  apiFetch<VerificationResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ handle }) });
+
 export const createUser = (handle: string) => apiFetch<User>('/user', { method: 'POST', body: JSON.stringify({ handle }) });
 export const getUser = (id: number) => apiFetch<User>(`/user/${id}`);
 export const updateUser = (id: number, data: Partial<UserSettings>) => apiFetch<User>(`/user/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
-
-export const getMe = () => apiFetch<{ user: User | null }>('/auth/me');
-export const logout = () => apiFetch<{ ok: boolean }>('/auth/logout', { method: 'POST' });
 
 export const getProblems = (params: ProblemQuery) => {
   const sp = new URLSearchParams();
@@ -136,7 +179,10 @@ export const getDailyHistory = (userId: number) => apiFetch<DailyHistoryItem[]>(
 
 export const syncSolves = (userId: number) => apiFetch<SyncResponse>(`/sync/${userId}`, { method: 'POST' });
 
-export const getStats = (userId: number) => apiFetch<StatsResponse>(`/stats/${userId}`);
+export const getStats = (userId: number) => {
+  const tz = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  return apiFetch<StatsResponse>(`/stats/${userId}?tz=${tz}`);
+};
 
 export const getProfile = (userId: number) => apiFetch<ProfileResponse>(`/profile/${userId}`);
 
