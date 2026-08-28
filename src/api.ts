@@ -2,7 +2,12 @@
 // - Local dev: left as '/api' (the Vite dev proxy forwards /api -> the backend).
 // - Vercel/Render split deploy: set VITE_API_BASE to the hosted backend URL,
 //   e.g. VITE_API_BASE=https://cf-companion-api.onrender.com
-const API_ORIGIN = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
+const API_ORIGIN = (
+  import.meta.env.VITE_API_BASE ||
+  (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+    ? 'https://codeforces-companion-backend.onrender.com'
+    : '')
+).replace(/\/+$/, '');
 const BASE = API_ORIGIN ? `${API_ORIGIN}/api` : '/api';
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
